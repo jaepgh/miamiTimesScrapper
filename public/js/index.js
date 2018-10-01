@@ -3,18 +3,72 @@ var $clearArticles = $("#clr_articles");
 
 $(document).ready(function () {
     $(document).on("click", ".btn_save", function () {
+        var $btn = $(this);
         var article = {
-            url: $(this).parent().parent().parent().find(".card-headline").attr("href"),
-            date: $(this).parent().parent().parent().find(".card-date").text(),
-            headline: $(this).parent().parent().parent().find(".card-headline").text(),
-            photo: $(this).parent().parent().parent().parent().find(".card-img-right").attr("src"),
-            summary: $(this).parent().parent().parent().find("p").text()
+            url: $btn.parent().parent().parent().find(".card-headline").attr("href"),
+            date: $btn.parent().parent().parent().find(".card-date").text(),
+            headline: $btn.parent().parent().parent().find(".card-headline").text(),
+            photo: $btn.parent().parent().parent().parent().find(".card-img-right").attr("src"),
+            summary: $btn.parent().parent().parent().find("p").text()
         }
 
         API.saveArticle(article).then(function (data) {
-            //$(this).parent().parent().parent().parent().parent().remove();
+            $btn.parent().parent().parent().parent().parent().parent().parent().remove();
         });
     });
+
+    $(document).on("click", ".btn_delete", function () {
+        var $btn = $(this);
+
+        API.deleteArticle($btn.attr("data-id")).then(function () {
+            $btn.parent().parent().parent().parent().parent().parent().parent().remove();
+        });
+    });
+
+    $(document).on("click", ".btn_notes", function () {
+        var $btn = $(this);
+        //Add all the comments
+        var $list = $(document).find('#comments_list');
+        $list.empty();
+
+        //ID for modal.
+        $(document).find(".btn_comment").attr("data-id", $btn.attr("data-id"));
+
+        API.getComments($btn.attr("data-id")).then(function (data) {
+            var item = $("<li>");
+            var li_row = $("<div class= 'row'>");
+            var li_comment = $("<p>").addClass("col-10");
+            li_comment.text(data.comments.comment);
+            var li_removes = $("<div>").addClass("col-1");
+            li_removes.append($(`<i data_id = ${data.comments._id}>`)
+                .addClass("fas fa-trash-alt btn align-middle"));
+
+            li_row.append(li_comment);
+            li_row.append(li_removes);
+
+            item.append(li_row);
+            $list.append(item);
+        });
+
+    });
+
+    $(document).on('click', '.btn_comment', function (event) {
+        var $btn = $(this);
+
+        API.saveComment({ comment: $btn.parent().parent().find("#message-text").val() }, $btn.attr("data-id")).then(function (data) {
+            $btn.parent().parent().find("#message-text").val("");
+            $(document).find(".modal ").modal('toggle');
+        });
+    })
+/////////////////////////////////////////////////////////////////////////////////////////////////
+    $(document).on('click', '.fa-trash-alt', function (event) {
+        var $btn = $(this);
+        var id = $(this).attr("data_id");
+
+        API.deleteComments(id).then(function () {
+            $btn.parent().parent().remove();
+        });
+    })
 });
 
 var API = {
@@ -29,15 +83,43 @@ var API = {
     },
     saveArticle: function (article) {
         return $.ajax({
-            headers: {
-                "Content-Type": "application/json"
-            },
-            type: "POST",
             url: "/api/addArticle",
-            data: { article: article },
+            method: "POST",
+            data: article,
             dataType: "json"
         });
     },
+    saveComment: function (comment, _id) {
+        return $.ajax({
+            url: "/api/addComment/" + _id,
+            method: "POST",
+            data: comment,
+            dataType: "json"
+        });
+    },
+    deleteArticle: function (id) {
+        return $.ajax({
+            url: "/api/deleteArticle",
+            method: "POST",
+            data: { id: id }
+        });
+    },
+    getComments: function (id) {
+        return $.ajax({
+            url: "/api/getComments",
+            method: "POST",
+            data: { id: id },
+            dataType: "json"
+        });
+    },
+    deleteComments: function (id) {
+        return $.ajax({
+            url: "/api/deleteComments",
+            method: "POST",
+            data: { id: id },
+            dataType: "json"
+        });
+    }
 };
 
 var handleNewArticles = function () {
@@ -103,3 +185,5 @@ function handleClrArticles() {
 // Add event listeners to the submit and delete buttons
 $newArticles.on("click", handleNewArticles);
 $clearArticles.on("click", handleClrArticles);
+
+//-----------------------------------------------------------------------------------------------------------
